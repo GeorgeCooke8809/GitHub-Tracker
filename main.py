@@ -2,6 +2,8 @@ from github import Github, Auth
 import logging
 from dotenv import load_dotenv
 import os
+from rich.progress import track
+import time
 
 class GitHubData:
     def __init__(self, ansi: bool = True):
@@ -110,12 +112,12 @@ class GitHubData:
     def _get_repo_files(self, repos):
         files = {}
 
-        index = 1
         file_index = 0
 
-        for repo in repos:
-            print(f"Working on repo no. {index} ({repo.name})...")
-            index += 1
+        for i in track(range(repos.totalCount)):
+            repo = repos[i]
+
+            print(f"Working on repo no. {i+1} ({repo.name})...")
 
             repo_files = []
             contents: list = repo.get_contents("")
