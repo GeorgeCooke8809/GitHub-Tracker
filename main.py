@@ -1,12 +1,30 @@
 from github import Github, Auth
 import json
 import logging
+from dotenv import load_dotenv
+import os
 
-class GitHub_Data():
-    def __init__(self):
-        pass
+class GitHubData:
+    def __init__(self, ansi: bool = True):
+        self.ansi = ansi
+
+        self.file_types = None
+
+        load_dotenv()
+        self.access_token = os.getenv("GITHUB_TOKEN")
+
+        if self.access_token == None:
+            raise ValueError("No GitHub token found.")
+        
+        auth = Auth.Token(self.access_token)
+
+        self.git_con = Github(auth=auth)
 
     def display_top_languages_line_count(self, entries: int = 5):
+        if self.file_types == None:
+            logging.error("self.file_types not declared")
+            raise ValueError("self.file_types does not exist yet, call update_data() before displaying")
+
         total_lines = 0
 
         logging.debug(f"{self.file_types = }")
@@ -22,13 +40,23 @@ class GitHub_Data():
             entries = len(sorted_languages)
 
         logging.debug(f"{sorted_languages = }")
+        
+        if self.ansi:
+            print("\033[1mTop Languages (By Line Count):\033[0m")
 
-        print("\033[1mTop Languages (By Line Count):\033[0m")
+            for i in range(entries):
+                print(f"{f"\033[1mLanguage {i+1}":<{(15+len(str(entries)))}}-\033[0m {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][0]:,} lines":^25}-{f"{self.file_types[sorted_languages[i]][0] / total_lines * 100 :.2f}%":>7}")
+        else:
+            print("Top Languages (By Line Count):")
 
-        for i in range(entries):
-            print(f"{f"\033[1mLanguage {i+1}":<{(15+len(str(entries)))}}-\033[0m {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][0]:,} lines":^25}-{f"{self.file_types[sorted_languages[i]][0] / total_lines * 100 :.2f}%":>7}")
+            for i in range(entries):
+                print(f"{f"Language {i+1}":<{(15+len(str(entries)))}}- {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][0]:,} lines":^25}-{f"{self.file_types[sorted_languages[i]][0] / total_lines * 100 :.2f}%":>7}")
 
     def display_top_languages_character_count(self, entries: int = 5):
+        if self.file_types == None:
+            logging.error("self.file_types not declared")
+            raise ValueError("self.file_types does not exist yet, call update_data() before displaying")
+        
         total_characters = 0
 
         logging.debug(f"{self.file_types = }")
@@ -45,24 +73,18 @@ class GitHub_Data():
 
         logging.debug(f"{sorted_languages = }")
 
-        print("\033[1mTop Languages (By Character Count):\033[0m")
+        if self.ansi:
+            print("\033[1mTop Languages (By Character Count):\033[0m")
 
-        for i in range(entries):
-            print(f"{f"\033[1mLanguage {i+1}":<{(15+len(str(entries)))}}-\033[0m {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][1]:,} characters":^25}-{f"{self.file_types[sorted_languages[i]][1] / total_characters * 100 :.2f}%":>7}")
+            for i in range(entries):
+                print(f"{f"\033[1mLanguage {i+1}":<{(15+len(str(entries)))}}-\033[0m {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][1]:,} characters":^25}-{f"{self.file_types[sorted_languages[i]][1] / total_characters * 100 :.2f}%":>7}")
+        else:
+            print("Top Languages (By Character Count):")
+
+            for i in range(entries):
+                print(f"{f"Language {i+1}":<{(15+len(str(entries)))}}- {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][1]:,} characters":^25}-{f"{self.file_types[sorted_languages[i]][1] / total_characters * 100 :.2f}%":>7}")
 
     def update_data(self):
-        with open("tokens.json", "r") as file:
-            access_token = json.load(file)["token"]
-
-        if access_token == "" or access_token == "YOUR TOKEN":
-            raise ValueError("No access token provided.")
-
-        logging.info(f"{access_token = }")
-
-        auth = Auth.Token(access_token)
-
-        self.git_con = Github(auth=auth)
-
         repos = self._get_repos()
 
         files = self._get_repo_files(repos)
@@ -84,11 +106,6 @@ class GitHub_Data():
 
         print(f"{repos.totalCount} Repos Found")
 
-        repo_names = [repo.name for repo in repos]
-
-        for i in range(len(repo_names)):
-            logging.info(f"{i+1} - {repos[i]}")
-
         return repos
     
     def _get_repo_files(self, repos):
@@ -107,11 +124,11 @@ class GitHub_Data():
             while len(contents) > 0:
                 element = contents.pop(0)
 
-                logging.info(f"{element = }")
+                logging.debug(f"{element = }")
 
                 if element.type == "dir": # Is folder
                     contents.extend(repo.get_contents(element.path))
-                    logging.info("Element is directory")
+                    logging.debug("Element is directory")
                 else:
                     try: # for if it is a single file in directory or list
                         repo_files.extend(element)
@@ -126,19 +143,20 @@ class GitHub_Data():
                 file_title_split = file_title.split(".")
                 file_type = f".{file_title_split[-1]}"
 
-                logging.info(f"{file_title = }")
-                logging.info(f"{file_type = }")
+                logging.debug(f"{file_title = }")
+                logging.debug(f"{file_type = }")
 
                 try:
                     file_content = file.decoded_content.decode("utf-8")
-                except AssertionError, UnicodeDecodeError: # for unsupported file types
-                    file_content = ""
+                except (AssertionError, UnicodeDecodeError): # for unsupported file types
+                    logging.debug(f"Could not decode {file} - treated as empty")
+                    file_content = "" # Means that any file that cannot natively be decoded is stored as empty
 
                 line_count = len(file_content.splitlines())
                 character_count = len(file_content)
 
-                logging.info(f"{line_count = }")
-                logging.info(f"{character_count = }")
+                logging.debug(f"{line_count = }")
+                logging.debug(f"{character_count = }")
 
                 files[f"{file_index} - {file_title}"] = [file_type, [line_count, character_count]]
 
@@ -150,7 +168,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, filename="log.log", filemode="w",
                         format="%(asctime)s - %(levelname)s - %(message)s")
 
-    connection = GitHub_Data()
+    connection = GitHubData()
 
     connection.update_data()
 
