@@ -10,3 +10,4 @@
 *.vsix
 tokens.json
 /log.log
+/.env
