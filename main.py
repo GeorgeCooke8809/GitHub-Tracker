@@ -1,5 +1,4 @@
 from github import Github, Auth
-import json
 import logging
 from dotenv import load_dotenv
 import os
@@ -13,7 +12,7 @@ class GitHubData:
         load_dotenv()
         self.access_token = os.getenv("GITHUB_TOKEN")
 
-        if self.access_token == None:
+        if self.access_token == None or self.access_token == "" or self.access_token == "YOUR_GITHUB_TOKEN":
             raise ValueError("No GitHub token found.")
         
         auth = Auth.Token(self.access_token)
