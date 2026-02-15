@@ -2,6 +2,8 @@ from github import Github, Auth
 import logging
 from dotenv import load_dotenv
 import os
+from rich.progress import track
+import time
 
 class GitHubData:
     def __init__(self, ansi: bool = True):
@@ -41,12 +43,12 @@ class GitHubData:
         logging.debug(f"{sorted_languages = }")
         
         if self.ansi:
-            print("\033[1mTop Languages (By Line Count):\033[0m")
+            print(f"\033[1mTop Languages (By Line Count): ({total_lines:,} lines in total)\033[0m")
 
             for i in range(entries):
                 print(f"{f"\033[1mLanguage {i+1}":<{(15+len(str(entries)))}}-\033[0m {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][0]:,} lines":^25}-{f"{self.file_types[sorted_languages[i]][0] / total_lines * 100 :.2f}%":>7}")
         else:
-            print("Top Languages (By Line Count):")
+            print(f"Top Languages (By Line Count): ({total_lines:,} lines in total)")
 
             for i in range(entries):
                 print(f"{f"Language {i+1}":<{(15+len(str(entries)))}}- {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][0]:,} lines":^25}-{f"{self.file_types[sorted_languages[i]][0] / total_lines * 100 :.2f}%":>7}")
@@ -73,12 +75,12 @@ class GitHubData:
         logging.debug(f"{sorted_languages = }")
 
         if self.ansi:
-            print("\033[1mTop Languages (By Character Count):\033[0m")
+            print(f"\033[1mTop Languages (By Character Count): ({total_characters:,} characters in total)\033[0m")
 
             for i in range(entries):
                 print(f"{f"\033[1mLanguage {i+1}":<{(15+len(str(entries)))}}-\033[0m {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][1]:,} characters":^25}-{f"{self.file_types[sorted_languages[i]][1] / total_characters * 100 :.2f}%":>7}")
         else:
-            print("Top Languages (By Character Count):")
+            print(f"Top Languages (By Character Count): ({total_characters:,} characters in total)")
 
             for i in range(entries):
                 print(f"{f"Language {i+1}":<{(15+len(str(entries)))}}- {sorted_languages[i]:^8} - {f"{self.file_types[sorted_languages[i]][1]:,} characters":^25}-{f"{self.file_types[sorted_languages[i]][1] / total_characters * 100 :.2f}%":>7}")
@@ -110,12 +112,12 @@ class GitHubData:
     def _get_repo_files(self, repos):
         files = {}
 
-        index = 1
         file_index = 0
 
-        for repo in repos:
-            print(f"Working on repo no. {index} ({repo.name})...")
-            index += 1
+        for i in track(range(repos.totalCount), show_speed=False):
+            repo = repos[i]
+
+            print(f"Working on repo no. {i+1} ({repo.name})...")
 
             repo_files = []
             contents: list = repo.get_contents("")
